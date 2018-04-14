@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,20 +14,40 @@ import (
 	"time"
 )
 
-var auth = map[string]string{
-	"username":      "journey",
-	"password":      "JourneyFTW!",
-	"email":         "benze@journeydevops.com",
-	"serveraddress": "https://localhost:3000"}
+type AuthForDocker struct {
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	Email         string `json:"email"`
+	ServerAddress string `json:"serveraddress"`
+}
 
 func collectorHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	collectors := map[string]func(http.ResponseWriter, *http.Request, map[string]string){
+	collectors := map[string]func(http.ResponseWriter, *http.Request, []byte){
 		"github": github.Client,
 		// "jira": jira
 	}
 
-	collectors[vars["source"]](w, r, auth)
+	localImport, err := ioutil.ReadFile("./local.json")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	authOptions := AuthForDocker{}
+	parseError := json.Unmarshal(localImport, &authOptions)
+
+	if parseError != nil {
+		fmt.Println("error:", parseError)
+		return
+	}
+
+	registryAuth, marshalErr := json.Marshal(authOptions)
+	if marshalErr != nil {
+		fmt.Printf("Error: ", marshalErr)
+		return
+	}
+	collectors[vars["source"]](w, r, registryAuth)
 }
 
 func main() {
@@ -38,7 +60,7 @@ func main() {
 		Methods("POST")
 
 	srv := &http.Server{
-		Addr: "0.0.0.0:8080",
+		Addr: "0.0.0.0:3000",
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,

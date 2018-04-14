@@ -1,0 +1,19 @@
+version: "1"
+services:
+  web:
+    image: journeydevops/pulse-engine
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "3000:3000"
+      - "3030: 3030"
+    networks:
+      - webnet
+networks:
+  webnet:

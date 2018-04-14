@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,7 +38,7 @@ func ParseDelivery(req *http.Request) (*Delivery, error) {
 }
 
 // Client ...
-func Client(w http.ResponseWriter, r *http.Request, auth map[string]string) {
+func Client(w http.ResponseWriter, r *http.Request, auth []byte) {
 	hc, err := ParseDelivery(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -45,6 +46,7 @@ func Client(w http.ResponseWriter, r *http.Request, auth map[string]string) {
 		io.WriteString(w, "{}")
 		return
 	}
+
 	url := "https://localhost:3030"
 	accessToken := [1]string{"GITHUB_TOKEN=" + hc.AccessToken}
 
@@ -66,6 +68,7 @@ func Client(w http.ResponseWriter, r *http.Request, auth map[string]string) {
 			return
 		}
 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		req.Header.Set("X-Registry-Auth", base64.StdEncoding.EncodeToString(auth))
 		req.Header.Set("Content-Type", "application/json")
 
 		client := &http.Client{}
